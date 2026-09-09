@@ -15,6 +15,7 @@ import { renderBusqueda } from './ui/search.js';
 import { ico } from './ui/icons.js';
 import {
   popover, closePopover, popoverOpen, modal, closeTopModal, modalOpen, toast,
+  pedirTexto,
 } from './ui/kit.js';
 import { textoActividad } from './ui/activity.js';
 
@@ -46,6 +47,9 @@ aplicarTema(localStorage.getItem(TEMA) || 'auto');
 
 arrancar();
 
+const ES_PUBLICO = CFG.ACCESS_MODE === 'publico';
+const APODO_OK = 'eq_boards_apodo_listo';
+
 async function arrancar() {
   $('#auth-domain').textContent = '@' + (CFG.ALLOWED_EMAIL_DOMAIN || 'equanimasecurities.com');
   if (!configurado()) {
@@ -60,6 +64,14 @@ async function arrancar() {
     if (!user) { mostrarLogin(); return; }
 
     await cargarSesion();
+
+    // En modo público se pide un apodo la primera vez, así el resto del
+    // equipo ve un nombre y no "Invitado 8F2A" en cada tarjeta.
+    if (ES_PUBLICO && !localStorage.getItem(APODO_OK)) {
+      pedirApodo(modo);
+      return;
+    }
+
     mostrarApp(modo);
   } catch (e) {
     console.error(e);
@@ -67,10 +79,85 @@ async function arrancar() {
   }
 }
 
+/* --------------------------- pantalla de apodo -------------------------- */
+
+function pedirApodo(modo) {
+  boot.hidden = true;
+  appEl.hidden = true;
+  authEl.hidden = false;
+
+  const sugerido = /^Invitado /i.test(state.me.full_name || '') ? '' : (state.me.full_name || '');
+
+  authEl.querySelector('.auth-card').innerHTML = html`
+    <div class="auth-logo">EB</div>
+    <h1>¿Cómo te llamás?</h1>
+    <p class="auth-sub">Así el equipo sabe quién movió qué</p>
+
+    <input class="input" id="apodo" maxlength="40" autocomplete="name"
+           placeholder="Nombre y apellido" value="${sugerido}"
+           style="text-align:center;font-size:15px;height:42px">
+
+    <button class="btn btn-primary btn-block" id="apodo-ok" style="margin-top:14px;height:42px">
+      Entrar al tablero
+    </button>
+
+    <p class="auth-note">
+      Tablero abierto: entra cualquiera con el link.<br>
+      Podés cambiar tu nombre después desde tu avatar.
+    </p>
+    <p id="apodo-error" class="auth-error" hidden></p>`;
+
+  const inp = $('#apodo');
+  const btn = $('#apodo-ok');
+  const err = $('#apodo-error');
+  inp.focus();
+
+  const entrar = async () => {
+    const v = inp.value.trim();
+    if (v.length < 2) { inp.focus(); return; }
+    btn.disabled = true;
+    btn.textContent = 'Entrando…';
+    try {
+      const p = await api.setNombre(v);
+      state.me = { ...state.me, ...p };
+      const i = state.profiles.findIndex((x) => x.id === state.me.id);
+      if (i >= 0) state.profiles[i] = state.me;
+      localStorage.setItem(APODO_OK, '1');
+      mostrarApp(modo);
+    } catch (e) {
+      console.error(e);
+      btn.disabled = false;
+      btn.textContent = 'Entrar al tablero';
+      err.textContent = e.message || 'No se pudo guardar el nombre';
+      err.hidden = false;
+    }
+  };
+
+  btn.onclick = entrar;
+  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') entrar(); });
+}
+
 function mostrarLogin(error) {
   boot.hidden = true;
   appEl.hidden = true;
   authEl.hidden = false;
+
+  // En modo público no hay login: si llegamos acá es porque falló la sesión
+  // de invitado (normalmente falta activar el toggle en Supabase).
+  if (ES_PUBLICO) {
+    authEl.querySelector('.auth-card').innerHTML = html`
+      <div class="auth-logo">EB</div>
+      <h1>No se pudo entrar</h1>
+      <p class="auth-sub">El tablero está configurado como abierto</p>
+      ${error ? raw(`<p class="auth-error" style="text-align:left">${esc(error)}</p>`) : ''}
+      <button class="btn btn-primary btn-block" id="reintentar" style="margin-top:14px">
+        Reintentar
+      </button>
+      <button class="btn btn-ghost btn-block" id="btn-demo2">Probar en modo demo</button>`;
+    $('#reintentar').onclick = () => location.reload();
+    $('#btn-demo2').onclick = () => { activarDemo(); location.reload(); };
+    return;
+  }
 
   const err = $('#auth-error');
   if (error) { err.textContent = error; err.hidden = false; } else { err.hidden = true; }
@@ -218,26 +305,51 @@ function menuCuenta(anchor) {
           </span>
         </div>
         <div class="menu-sep"></div>
+        <button class="menu-item" data-x="nombre">${raw(ico('user'))} Cambiar mi nombre</button>
         <button class="menu-item" data-x="theme">${raw(ico('palette'))} Cambiar tema</button>
         <button class="menu-item" data-x="shortcuts">${raw(ico('keyboard'))} Atajos de teclado</button>
         <div class="menu-sep"></div>
         <p class="small muted" style="padding:4px 10px">
-          Backend: <b>${state.mode === 'demo' ? 'demo local' : 'Supabase'}</b>
+          Backend: <b>${state.mode === 'demo' ? 'demo local' : 'Supabase'}</b><br>
+          Acceso: <b>${ES_PUBLICO ? 'abierto (cualquiera con el link)' : 'solo @' + CFG.ALLOWED_EMAIL_DOMAIN}</b>
         </p>
         ${state.mode === 'demo' && configurado() ? raw(
           `<button class="menu-item" data-x="exit-demo">${ico('logout')} Salir del modo demo</button>`) : ''}
         <button class="menu-item danger" data-x="logout">${raw(ico('logout'))} Cerrar sesión</button>`;
 
-      on(body, 'click', '[data-x]', (_, b) => {
+      on(body, 'click', '[data-x]', async (_, b) => {
         const x = b.dataset.x;
         closePopover();
         if (x === 'theme') alternarTema();
         if (x === 'shortcuts') ayudaAtajos();
         if (x === 'exit-demo') { salirDemo(); location.reload(); }
         if (x === 'logout') api.auth.signOut();
+        if (x === 'nombre') await cambiarNombre();
       });
     },
   });
+}
+
+async function cambiarNombre() {
+  const v = await pedirTexto({
+    title: 'Cambiar mi nombre',
+    label: 'Así te ven los demás en las tarjetas',
+    value: state.me.full_name || '',
+  });
+  if (!v) return;
+  try {
+    const p = await api.setNombre(v);
+    state.me = { ...state.me, ...p };
+    const i = state.profiles.findIndex((x) => x.id === state.me.id);
+    if (i >= 0) state.profiles[i] = state.me;
+    const m = state.members.find((x) => x.user_id === state.me.id);
+    if (m) { m.full_name = state.me.full_name; m.initials = state.me.initials; }
+    pintarTopbar();
+    bus.emit('board');
+    toast('Nombre actualizado', 'ok');
+  } catch (e) {
+    toast(e.message || 'No se pudo cambiar el nombre', 'err');
+  }
 }
 
 /* ================================ router =============================== */

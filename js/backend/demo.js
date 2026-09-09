@@ -194,8 +194,31 @@ export function makeDemoBackend() {
       onAuthChange() { return () => {}; },
     },
 
-    async me() { return clone(ME); },
+    async me() {
+      // El apodo vive en la tabla persistida: ME es solo el molde inicial.
+      const p = tbl('profiles').find((x) => x.id === ME.id);
+      if (p) Object.assign(ME, {
+        full_name: p.full_name, initials: p.initials, avatar_url: p.avatar_url,
+      });
+      return clone(ME);
+    },
     async profiles() { return clone(tbl('profiles')); },
+
+    async setNombre(nombre) {
+      const d = load();
+      const p = d.profiles.find((x) => x.id === ME.id);
+      const ini = nombre.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+      if (p) { p.full_name = nombre; p.initials = ini; }
+      ME.full_name = nombre; ME.initials = ini;
+      save();
+      return clone(ME);
+    },
+
+    /** En demo la presencia es solo el usuario local. */
+    presencia(_boardId, perfil, onChange) {
+      onChange([{ ...perfil, user_id: perfil.id }]);
+      return () => {};
+    },
 
     async boardsOverview() {
       const d = load();

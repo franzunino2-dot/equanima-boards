@@ -1,194 +1,280 @@
 # Puesta en marcha — Equanima Boards
 
-Tiempo estimado: **20 minutos**. Todo lo que se usa está en el plan gratuito.
+Dos modos de acceso. Elegí uno y seguí solo esa sección.
 
-Al final vas a tener:
+| Modo | Quién entra | Config |
+|---|---|---|
+| **Abierto** (el actual) | Cualquiera con el link, eligiendo un apodo | `ACCESS_MODE: 'publico'` |
+| **Cerrado** | Solo mails `@equanimasecurities.com`, login con Google | `ACCESS_MODE: 'dominio'` |
 
-- La app publicada en `https://<tu-usuario>.github.io/equanima-boards`
-- Login con Google restringido a `@equanimasecurities.com`
-- Base de datos Postgres con sincronización en vivo entre usuarios
+Se puede pasar de uno a otro en cualquier momento sin tocar código: son dos
+archivos SQL y una línea de `config.js`. Ver **[Cambiar de modo](#cambiar-de-modo)**.
+
+Todo entra en el plan gratuito de Supabase y GitHub Pages.
 
 ---
 
+# Modo ABIERTO — 15 minutos
+
+Lo que vas a tener: una URL pública que cualquiera abre, pone su nombre y
+empieza a editar. Los cambios se ven en vivo entre todos.
+
+> **Antes de arrancar, tenelo claro:** cualquiera con el link puede leer, editar
+> y borrar tarjetas y listas. La identidad es un apodo que cada uno elige, así
+> que no hay trazabilidad real. **No pongas comitentes, montos ni nombres de
+> clientes mientras esté así.**
+>
+> Lo único que queda protegido es *eliminar un tablero completo*: solo puede
+> hacerlo quien lo creó. Todo lo demás está abierto.
+
 ## 1. Crear el proyecto en Supabase
 
-1. Entrá a <https://supabase.com> y creá una cuenta (podés usar tu mail de Equanima).
-2. **New project**:
+1. <https://supabase.com> → cuenta → **New project**
    - **Name**: `equanima-boards`
-   - **Database password**: generá una y guardala en el gestor de contraseñas.
-     No la vas a necesitar para la app, pero sí si algún día conectás por SQL directo.
-   - **Region**: `South America (São Paulo)` — es la más cercana a Buenos Aires.
-3. Esperá 2-3 minutos a que termine de provisionar.
+   - **Database password**: generala y guardala en el gestor de contraseñas
+     (no la necesita la app, sí vos si algún día entrás por SQL directo)
+   - **Region**: `South America (São Paulo)`
+2. Esperá 2-3 minutos.
 
 ## 2. Crear las tablas
 
-1. En el menú izquierdo: **SQL Editor** → **New query**.
-2. Abrí [`schema.sql`](schema.sql), copiá **todo** el contenido y pegalo.
-3. **Run**. Tiene que decir *Success*.
+**SQL Editor** → **New query** → pegá **todo** [`schema.sql`](schema.sql) → **Run**.
+Tiene que decir *Success*.
 
-> El script es idempotente: si más adelante lo modificás, lo podés volver a correr completo.
+## 3. Abrir el acceso
 
-**Si tu dominio no es `equanimasecurities.com`**, cambialo antes de correr el script:
-buscá la función `allowed_domain()` (arriba del archivo) y editá esa única línea.
+En el mismo **SQL Editor**, nueva query: pegá **todo**
+[`schema_acceso_publico.sql`](schema_acceso_publico.sql) → **Run**.
 
-## 3. Habilitar el login con Google
+Al final devuelve una tabla de verificación. Tiene que decir:
 
-Google necesita saber quién le está pidiendo el login, así que hay que crear
-credenciales OAuth. Son dos pantallas.
+| modo | candado_dominio |
+|---|---|
+| `PUBLICO` | `false` |
 
-### 3.1 En Supabase, copiá la URL de callback
+## 4. Activar las sesiones de invitado
 
-**Authentication** → **Providers** → **Google**. Activá el switch y copiá el valor de
-**Callback URL (for OAuth)**. Se ve así:
+**Authentication** → **Sign In / Providers** → buscá **Anonymous sign-ins** y
+**activalo**.
 
-```
-https://<id-del-proyecto>.supabase.co/auth/v1/callback
-```
+Sin este toggle la app no puede crear la sesión de invitado y **no entra nadie**
+(te va a mostrar un cartel diciendo exactamente esto).
 
-Dejá esa pestaña abierta.
-
-### 3.2 En Google Cloud, creá el cliente OAuth
-
-1. Entrá a <https://console.cloud.google.com>.
-2. Creá un proyecto (o usá uno existente de Equanima).
-3. **APIs y servicios** → **Pantalla de consentimiento de OAuth**:
-   - Tipo de usuario: **Interno** si Equanima tiene Google Workspace
-     (esto ya limita el acceso al dominio por sí solo), o **Externo** si no.
-   - Nombre de la app: `Equanima Boards`
-   - Mail de soporte: el tuyo
-4. **Credenciales** → **Crear credenciales** → **ID de cliente de OAuth**:
-   - Tipo: **Aplicación web**
-   - Nombre: `Equanima Boards`
-   - **URI de redireccionamiento autorizados**: pegá la Callback URL del paso 3.1
-   - **Orígenes autorizados de JavaScript**: agregá
-     - `https://<tu-usuario>.github.io`
-     - `http://localhost:5502` (para probar local)
-5. Guardá y copiá el **ID de cliente** y el **Secreto de cliente**.
-
-### 3.3 Volvé a Supabase
-
-Pegá el **Client ID** y el **Client Secret** en el provider de Google y guardá.
-
-## 4. Configurar las URLs de la app
+## 5. Configurar las URLs
 
 **Authentication** → **URL Configuration**:
 
 - **Site URL**: `https://<tu-usuario>.github.io/equanima-boards`
-- **Redirect URLs**: agregá una por línea
-  - `https://<tu-usuario>.github.io/equanima-boards`
-  - `http://localhost:5502`
+- **Redirect URLs**: agregá `http://localhost:5502` también, para probar local.
 
-Sin esto, después del login Google te devuelve a un lugar equivocado.
+## 6. Copiar las claves
 
-## 5. Pegar las claves en `config.js`
+**Project Settings** → **API Keys**:
 
-**Project Settings** → **API Keys** (o **Data API**). Necesitás dos cosas:
-
-| Dónde va en `config.js` | Qué copiar de Supabase |
+| Va en | Copiar de Supabase |
 |---|---|
 | `SUPABASE_URL` | **Project URL** (`https://xxxx.supabase.co`) |
-| `SUPABASE_ANON_KEY` | La clave **anon** / **public** |
+| `SUPABASE_ANON_KEY` | la clave **anon** / **public** |
 
-```js
-window.EQ_CONFIG = {
-  SUPABASE_URL: 'https://xxxxxxxxxxxx.supabase.co',
-  SUPABASE_ANON_KEY: 'eyJhbGciOi...',
-  ALLOWED_EMAIL_DOMAIN: 'equanimasecurities.com',
-  // ...
-};
-```
+No las pegues en `config.js` si vas a publicar en GitHub: el deploy las inyecta
+solo (paso 7). Para probar en tu máquina sí podés pegarlas, pero **no commitees
+ese cambio**.
 
-> **La clave `anon` es pública a propósito** y va a quedar visible en el repo.
-> No es un problema: no da acceso a nada por sí sola, porque cada tabla tiene
-> Row Level Security que exige un usuario logueado del dominio autorizado.
->
-> **Lo que NUNCA hay que poner acá es la `service_role` key** — esa sí saltea
-> todas las políticas de seguridad.
-
-## 6. Publicar en GitHub Pages
+## 7. Publicar en GitHub Pages
 
 ```bash
 cd Documents/GitHub/equanima-boards
-git add -A
-git commit -m "Equanima Boards"
 git remote add origin https://github.com/<tu-usuario>/equanima-boards.git
 git push -u origin main
 ```
 
-En GitHub: **Settings** → **Pages** → Source: **Deploy from a branch** →
-Branch `main` / carpeta `/ (root)` → **Save**.
+Después, en GitHub:
 
-En 1-2 minutos queda arriba.
+1. **Settings** → **Secrets and variables** → **Actions** → **New repository secret**:
+   - `SUPABASE_URL` → la Project URL
+   - `SUPABASE_ANON_KEY` → la clave anon
+2. **Settings** → **Pages** → Source: **GitHub Actions**
+3. **Actions** → si el deploy no arrancó solo, **Run workflow**
 
-## 7. Primer login y tablero inicial
+El workflow [`pages.yml`](../.github/workflows/pages.yml) genera `config.js` en
+el momento del build a partir de esos secrets, así **las claves nunca quedan en
+el código**.
 
-1. Abrí la app y entrá con Google.
-2. Ya podés crear tableros desde el botón **Crear**.
+En 1-2 minutos la URL queda arriba:
 
-Si querés arrancar con un tablero de ejemplo cargado, en el **SQL Editor** corré:
+```
+https://<tu-usuario>.github.io/equanima-boards
+```
+
+## 8. Primer tablero
+
+Abrí la URL, poné tu nombre y creá el tablero con **Crear**.
+
+Si querés arrancar con uno de ejemplo, en el **SQL Editor**:
 
 ```sql
 select public.crear_tablero_demo();
 ```
 
-(Lo tenés que correr logueado con tu usuario para que quede como creador; si lo corrés
-desde el SQL Editor queda sin creador y aparece igual porque es visible para todo
-Equanima.)
+Mandá el link al equipo y listo: cada uno pone su nombre y ya están todos
+editando el mismo tablero.
 
 ---
 
-## Cómo funciona la seguridad
+# Modo CERRADO — 25 minutos
 
-Tres capas independientes, todas apuntando al mismo dominio:
+Igual que el abierto, pero en lugar de los pasos 3 y 4 va esto, más el alta del
+cliente OAuth de Google.
 
-1. **Google**: el parámetro `hd` sugiere el dominio en el selector de cuentas.
-   Si la pantalla de consentimiento es **Interna**, Google directamente no deja
-   entrar a nadie de afuera.
-2. **Trigger en `auth.users`**: si un mail de otro dominio llega a intentar
-   registrarse, Postgres aborta el alta con un error explícito.
-3. **Row Level Security**: cada `select`/`insert`/`update`/`delete` de cada tabla
-   pasa por `is_workspace_member()`, que compara el mail del JWT contra
-   `allowed_domain()`. Incluso con un token válido de otro dominio, no ve una fila.
+## 3'. Cerrar el acceso al dominio
 
-Los tableros tienen además dos niveles:
+**SQL Editor** → pegá [`schema_acceso_dominio.sql`](schema_acceso_dominio.sql) → **Run**.
 
-- `workspace` — los ve y edita todo Equanima (el default, como un tablero de
-  espacio de trabajo en Trello)
-- `private` — solo los miembros que agregues explícitamente
+Verificación esperada:
 
-## Costos y límites del plan gratuito
+| dominio | candado_dominio |
+|---|---|
+| `equanimasecurities.com` | `true` |
 
-| Recurso | Límite free | Qué significa para el equipo |
+En `config.js` (o en la variable `ACCESS_MODE` del repo) poné `'dominio'`.
+
+Si tu dominio es otro, editá la función `allowed_domain()` en
+[`schema.sql`](schema.sql) — es una sola línea, arriba del archivo.
+
+## 4'. Habilitar el login con Google
+
+### 4'.1 Copiar la URL de callback
+
+**Authentication** → **Providers** → **Google**: activá el switch y copiá la
+**Callback URL (for OAuth)**:
+
+```
+https://<id-del-proyecto>.supabase.co/auth/v1/callback
+```
+
+### 4'.2 Crear el cliente OAuth en Google Cloud
+
+1. <https://console.cloud.google.com> → proyecto nuevo (no hace falta tocar
+   nada de lo existente de Equanima)
+2. **APIs y servicios** → **Pantalla de consentimiento de OAuth**:
+   - **Interno** si Equanima tiene Google Workspace y sos admin — esto ya
+     limita al dominio por sí solo
+   - **Externo** si no sos admin; el candado del dominio igual lo aplica Postgres
+   - Nombre: `Equanima Boards`
+3. **Credenciales** → **Crear credenciales** → **ID de cliente de OAuth**:
+   - Tipo: **Aplicación web**
+   - **URI de redireccionamiento autorizados**: la Callback URL del paso anterior
+   - **Orígenes autorizados de JavaScript**:
+     - `https://<tu-usuario>.github.io`
+     - `http://localhost:5502`
+4. Copiá **ID de cliente** y **Secreto de cliente**
+
+### 4'.3 Pegarlos en Supabase
+
+En el provider de Google: **Client ID** y **Client Secret** → **Save**.
+
+### 4'.4 Apagar las sesiones de invitado
+
+**Authentication** → **Sign In / Providers** → **Anonymous sign-ins**: **OFF**.
+
+---
+
+# Cambiar de modo
+
+## De abierto a cerrado
+
+1. **SQL Editor**: correr [`schema_acceso_dominio.sql`](schema_acceso_dominio.sql)
+2. Dar de alta el cliente OAuth de Google (paso 4' de arriba)
+3. `ACCESS_MODE` → `'dominio'` (en `config.js`, o en la variable del repo si
+   usás el workflow)
+4. **Authentication** → **Anonymous sign-ins**: OFF
+
+Los invitados que ya habían entrado quedan sin acceso a ninguna fila. Sus
+tarjetas **no se borran**. Para eliminar esos usuarios hay un bloque comentado
+al final de `schema_acceso_dominio.sql`.
+
+## De cerrado a abierto
+
+1. **SQL Editor**: correr [`schema_acceso_publico.sql`](schema_acceso_publico.sql)
+2. `ACCESS_MODE` → `'publico'`
+3. **Authentication** → **Anonymous sign-ins**: ON
+
+> Cambiar solo `ACCESS_MODE` **no alcanza**: es cosmético. El candado real son
+> las políticas RLS de la base, y esas se cambian con el SQL.
+
+---
+
+# Cómo funciona la seguridad
+
+Todas las políticas RLS de todas las tablas llaman a una única función,
+`is_workspace_member()`. Los dos archivos de acceso lo que hacen es reemplazar
+esa función:
+
+- **abierto**: `auth.uid() is not null` → cualquier sesión, incluidas las anónimas
+- **cerrado**: además exige que el mail del JWT termine en `@` + `allowed_domain()`
+
+Por eso el cambio de modo es una sola función y no una migración: no hay que
+tocar ninguna política.
+
+Los tableros tienen además dos niveles propios:
+
+- `workspace` — lo ve y edita cualquiera que tenga acceso a la app (el default)
+- `private` — solo los miembros que agregues
+
+En modo abierto, `private` limita a los miembros pero cualquiera puede sumarse
+como miembro, así que no es una barrera real. Para cerrar de verdad hay que
+cambiar de modo.
+
+## Sobre la clave `anon`
+
+Es pública por diseño y no da acceso a nada por sí sola: identifica al proyecto,
+no autoriza. Lo que autoriza es la sesión, y lo que filtra las filas es RLS.
+
+Lo que **nunca** va en el frontend ni en el repo es la **`service_role` key**:
+esa saltea todas las políticas.
+
+## Límites del plan gratuito
+
+| Recurso | Límite | Qué significa |
 |---|---|---|
-| Base de datos | 500 MB | Decenas de miles de tarjetas |
+| Base de datos | 500 MB | decenas de miles de tarjetas |
 | Storage (adjuntos) | 1 GB | ~40 adjuntos de 25 MB |
-| Usuarios activos | 50.000 / mes | De sobra |
-| Realtime | 200 conexiones simultáneas | De sobra |
-| GitHub Pages | 1 GB / 100 GB de tráfico | De sobra |
+| Usuarios | 50.000 activos / mes | de sobra |
+| Realtime | 200 conexiones simultáneas | de sobra |
+| Altas de invitado | ~30 por hora por IP | de sobra para un equipo |
 
-El proyecto free de Supabase **se pausa después de 7 días sin actividad**. Con el
-equipo usándolo a diario eso no pasa; si el tablero queda quieto una semana, se
-reactiva desde el dashboard con un click.
+El proyecto free **se pausa a los 7 días sin actividad**. Con uso diario no
+pasa; si se pausa, se reactiva con un click desde el dashboard.
 
-## Problemas frecuentes
+---
+
+# Problemas frecuentes
+
+**"No se pudo crear la sesión de invitado"**
+Falta activar **Anonymous sign-ins** (paso 4).
 
 **"Acceso restringido: solo cuentas @equanimasecurities.com"**
-El mail con el que entraste no es del dominio. Cerrá sesión de Google y elegí el
-mail de Equanima.
+Estás en modo cerrado y entraste con otro mail. Cerrá sesión de Google y elegí
+el de Equanima.
 
 **Después del login vuelve al login**
 Falta la URL en **Authentication → URL Configuration → Redirect URLs**, o no
-coincide exactamente (ojo con la barra final y con http vs https).
+coincide exacto (ojo con la barra final y con http vs https).
 
 **"redirect_uri_mismatch" de Google**
-La Callback URL de Supabase no está en **URI de redireccionamiento autorizados**
-del cliente OAuth de Google Cloud.
+La Callback URL de Supabase no está en los URI de redireccionamiento del
+cliente OAuth.
+
+**El deploy falla con "Faltan los secrets"**
+No están cargados `SUPABASE_URL` / `SUPABASE_ANON_KEY` en
+**Settings → Secrets and variables → Actions**.
 
 **Los cambios de otro no aparecen solos**
-Verificá que la sección 8 del `schema.sql` corrió bien (la que hace
-`alter publication supabase_realtime add table ...`). Podés volver a correr solo
-ese bloque.
+Revisá que la sección 8 de `schema.sql` haya corrido (la de
+`alter publication supabase_realtime add table ...`). Se puede correr sola.
+
+**No veo los avatares de quién está mirando**
+La presencia usa Realtime. Si el proyecto estaba pausado, reactivalo y recargá.
 
 **Un adjunto no abre**
-El bucket es privado y las URLs se firman por 1 hora. Si la pestaña quedó abierta
-mucho tiempo, recargá.
+El bucket es privado y las URLs se firman por 1 hora. Recargá la página.

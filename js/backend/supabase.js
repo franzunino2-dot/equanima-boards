@@ -23,6 +23,7 @@ export async function makeSupabaseBackend() {
   const dominio = (CFG.ALLOWED_EMAIL_DOMAIN || '').toLowerCase();
   const bucket = CFG.STORAGE_BUCKET || 'attachments';
   const urlCache = new Map();
+  const publico = CFG.ACCESS_MODE === 'publico';
 
   const emailOk = (email) => !dominio || String(email || '').toLowerCase().endsWith('@' + dominio);
 
@@ -40,18 +41,38 @@ export async function makeSupabaseBackend() {
 
   return {
     mode: 'supabase',
+    acceso: publico ? 'publico' : 'dominio',
     client: sb,
 
     auth: {
       async init() {
         const { data } = await sb.auth.getSession();
-        const user = data?.session?.user || null;
+        let user = data?.session?.user || null;
 
         // Limpia el hash que deja el redirect de OAuth
         if (location.hash.includes('access_token')) {
           history.replaceState(null, '', location.pathname + location.search);
         }
 
+        // --- Modo público: sesión de invitado automática ---
+        if (publico) {
+          if (!user) {
+            const { data: d2, error } = await sb.auth.signInAnonymously();
+            if (error) {
+              console.error('[supabase:anon]', error);
+              const e = new Error(
+                'No se pudo crear la sesión de invitado. En Supabase: ' +
+                'Authentication → Sign In / Providers → activá ' +
+                '"Allow anonymous sign-ins".');
+              e.code = 'ANON_OFF';
+              throw e;
+            }
+            user = d2.user;
+          }
+          return { user, esInvitado: !user.email };
+        }
+
+        // --- Modo dominio: solo mails autorizados ---
         if (user && !emailOk(user.email)) {
           await sb.auth.signOut();
           const e = new Error(
@@ -114,6 +135,17 @@ export async function makeSupabaseBackend() {
       return chk(await sb.from('profiles').select('*').order('full_name'), 'profiles') || [];
     },
 
+    /** Cambia el nombre visible (apodo de invitado o nombre propio). */
+    async setNombre(nombre) {
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) throw new Error('Sin sesión');
+      const ini = initials(nombre, user.email || '');
+      await sb.auth.updateUser({ data: { full_name: nombre, apodo: nombre } });
+      return chk(await sb.from('profiles')
+        .update({ full_name: nombre, initials: ini })
+        .eq('id', user.id).select().single(), 'setNombre');
+    },
+
     /* ------------------------------ tableros ---------------------------- */
 
     async boardsOverview() {
@@ -156,6 +188,44 @@ export async function makeSupabaseBackend() {
           });
       }
       ch.subscribe();
+      return () => sb.removeChannel(ch);
+    },
+
+    /**
+     * Presencia: avisa quién está mirando el tablero ahora mismo.
+     * @param {string} boardId
+     * @param {object} perfil  { id, full_name, initials, avatar_url }
+     * @param {(gente:object[])=>void} onChange
+     * @returns {Function} para desuscribirse
+     */
+    presencia(boardId, perfil, onChange) {
+      const ch = sb.channel('presencia:' + boardId, {
+        config: { presence: { key: perfil.id } },
+      });
+
+      const sync = () => {
+        const estado = ch.presenceState();
+        // Una persona puede tener varias pestañas: se deduplica por id
+        const porId = new Map();
+        Object.values(estado).flat().forEach((p) => porId.set(p.user_id, p));
+        onChange([...porId.values()]);
+      };
+
+      ch.on('presence', { event: 'sync' }, sync);
+      ch.on('presence', { event: 'join' }, sync);
+      ch.on('presence', { event: 'leave' }, sync);
+
+      ch.subscribe(async (estado) => {
+        if (estado !== 'SUBSCRIBED') return;
+        await ch.track({
+          user_id: perfil.id,
+          full_name: perfil.full_name,
+          initials: perfil.initials,
+          avatar_url: perfil.avatar_url,
+          desde: new Date().toISOString(),
+        });
+      });
+
       return () => sb.removeChannel(ch);
     },
 

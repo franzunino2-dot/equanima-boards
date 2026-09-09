@@ -5,9 +5,29 @@ mismas funcionalidades, datos en nuestra infraestructura, costo cero.
 
 - **Frontend**: vanilla JS con módulos ES, sin build step, servido por GitHub Pages
 - **Backend**: Supabase (Postgres + Auth + Realtime + Storage)
-- **Acceso**: solo cuentas `@equanimasecurities.com`
+- **Acceso**: configurable en una línea — abierto a cualquiera con el link, o
+  restringido a `@equanimasecurities.com`
 
-Para ponerlo en producción: **[supabase/SETUP.md](supabase/SETUP.md)** (20 minutos).
+Para ponerlo en producción: **[supabase/SETUP.md](supabase/SETUP.md)** (15-25 min
+según el modo).
+
+## Modos de acceso
+
+`ACCESS_MODE` en [`config.js`](config.js):
+
+| Modo | Quién entra | SQL a correr |
+|---|---|---|
+| `publico` | Cualquiera con el link, eligiendo un apodo | `schema_acceso_publico.sql` |
+| `dominio` | Solo mails del dominio, login con Google | `schema_acceso_dominio.sql` |
+
+**Cambiar `ACCESS_MODE` solo no alcanza.** Esa línea es cosmética: define qué
+pantalla de entrada se muestra. El candado real son las políticas RLS, y todas
+llaman a una única función `is_workspace_member()` que los dos `.sql` reemplazan.
+Por eso cambiar de modo es correr un archivo, no una migración.
+
+> En modo `publico` cualquiera con la URL puede leer, editar y borrar tarjetas y
+> listas, y la identidad es un apodo elegido por cada uno. Lo único reservado al
+> creador es eliminar un tablero completo. No pongas datos de clientes ahí.
 
 ## Probarlo ya mismo
 
@@ -66,11 +86,16 @@ Filtro por texto, miembro (incluido "sin miembro"), etiqueta (incluido "sin
 etiqueta") y vencimiento, con barra de filtros activos y contador. Búsqueda
 global de tarjetas en todos los tableros desde la barra superior.
 
+### Colaboración en vivo
+Sincronización en tiempo real entre usuarios: si alguien mueve una tarjeta,
+la ves moverse. Además, **presencia** — avatares con un punto verde en el
+encabezado que muestran quién tiene el tablero abierto en este momento
+(deduplicado por persona, aunque tenga varias pestañas).
+
 ### Otros
-Sincronización en vivo entre usuarios (si alguien mueve una tarjeta, la ves
-moverse), tema claro/oscuro, novedades de tus tarjetas, "mis tarjetas",
-archivo con restauración, atajos de teclado (`?` para verlos) y diseño
-responsive.
+Tema claro/oscuro, novedades de tus tarjetas, "mis tarjetas", archivo con
+restauración, cambio de nombre propio, atajos de teclado (`?` para verlos) y
+diseño responsive.
 
 ### Fuera de alcance por ahora
 Automatizaciones tipo Butler, power-ups, tarjetas plantilla, adjuntos desde
@@ -106,8 +131,12 @@ js/
     icons.js          íconos SVG
     activity.js       textos del registro de actividad
 supabase/
-  schema.sql          tablas, RLS, triggers, realtime, storage
-  SETUP.md            guía de instalación paso a paso
+  schema.sql                  tablas, RLS, triggers, realtime, storage
+  schema_acceso_publico.sql   abre el acceso a cualquiera con el link
+  schema_acceso_dominio.sql   lo cierra al dominio autorizado
+  SETUP.md                    guía de instalación paso a paso
+.github/workflows/
+  pages.yml           deploy a Pages generando config.js desde secrets
 ```
 
 ## Notas de implementación
@@ -129,6 +158,11 @@ actividad) en un solo JSON, en lugar de una decena de queries.
 **El dominio se define en dos lugares.** `ALLOWED_EMAIL_DOMAIN` en `config.js` para
 el mensaje al usuario, y `allowed_domain()` en `schema.sql` para el candado real.
 Si cambia, hay que actualizar los dos.
+
+**Las claves no viven en el repo.** `config.js` está commiteado con los campos
+vacíos (así el clon arranca en modo demo). El workflow de Pages lo regenera en
+cada deploy a partir de los secrets del repo. Si las pegás para probar local,
+no commitees ese cambio.
 
 ## Licencia
 

@@ -5,7 +5,7 @@
 import {
   html, raw, esc, on, $, autogrow, focusEnd, avatarHTML, labelStyle,
   LABEL_COLORS, BOARD_BGS, fechaCorta, haceRato, mdPlain, dueLabel,
-  dueState, copiar, between,
+  dueState, copiar, between, CFG,
 } from '../util.js';
 import {
   state, bus, abrirTablero, listasVisibles, tarjetasDe, etiquetasDe, miembrosDe,
@@ -18,6 +18,7 @@ import {
   listasArchivadas, tarjetasArchivadas, archivarTarjeta, borrarTarjeta,
   nombreDe, esMiembroDelTablero, actividadDe,
 } from '../store.js';
+import { api } from '../api.js';
 import { initDnD, arrastrando } from '../dnd.js';
 import { ico } from './icons.js';
 import { popover, popoverPush, closePopover, modal, toast, confirmar, pedirTexto } from './kit.js';
@@ -26,6 +27,8 @@ import { textoActividad } from './activity.js';
 
 let host = null;
 let offBus = null;
+let offPresencia = null;
+let enLinea = [];        // quién está mirando el tablero ahora
 let pausas = 0;          // >0 = hay un editor inline abierto, no re-renderizar
 let pendiente = false;
 let composer = null;     // { listId, top }
@@ -64,7 +67,19 @@ export async function renderBoard(hostEl, boardId) {
     pintarTodo();
   });
 
-  return () => { offBus?.(); offBus = null; host = null; };
+  // Presencia: avatares de quién tiene el tablero abierto en este momento
+  enLinea = [];
+  offPresencia = api.presencia?.(boardId, state.me, (gente) => {
+    enLinea = gente;
+    if (host && state.board) pintarHeader();
+  }) || null;
+
+  return () => {
+    offBus?.(); offBus = null;
+    offPresencia?.(); offPresencia = null;
+    enLinea = [];
+    host = null;
+  };
 }
 
 /** Suspende los re-renders mientras hay un input abierto. */
@@ -100,7 +115,8 @@ function pintarHeader() {
               title="${dest ? 'Quitar de destacados' : 'Destacar'}">${raw(ico(dest ? 'star' : 'starOff'))}</button>
       <button class="bh-btn" data-act="visibility" title="Visibilidad">
         ${raw(ico(b.visibility === 'private' ? 'user' : 'people'))}
-        <span>${b.visibility === 'private' ? 'Privado' : 'Equanima'}</span>
+        <span>${b.visibility === 'private' ? 'Privado'
+                : CFG.ACCESS_MODE === 'publico' ? 'Abierto' : 'Equanima'}</span>
       </button>
 
       <div class="bh-sep"></div>
@@ -124,6 +140,16 @@ function pintarHeader() {
       </button>
 
       <span class="spacer" style="flex:1"></span>
+
+      ${enLinea.length ? raw(`
+        <div class="bh-online" title="${esc(enLinea.map((p) => p.full_name || 'Invitado').join(', '))}">
+          <span class="dot"></span>
+          <span class="avatar-stack">
+            ${enLinea.slice(0, 5).map((p) => avatarHTML(p, 'avatar-sm')).join('')}
+            ${enLinea.length > 5 ? `<span class="avatar avatar-sm">+${enLinea.length - 5}</span>` : ''}
+          </span>
+        </div>
+        <div class="bh-sep"></div>`) : ''}
 
       <div class="avatar-stack" data-act="share" style="cursor:pointer" title="Miembros del tablero">
         ${raw(state.members.slice(0, 6).map((m) => avatarHTML(m)).join(''))}
@@ -792,11 +818,19 @@ function menuVisibilidad(anchor) {
   popover({
     anchor, title: 'Visibilidad', tight: true,
     render(body, ctl) {
+      const abierto = CFG.ACCESS_MODE === 'publico';
       body.innerHTML = html`
         <button class="menu-item" data-v="workspace">${raw(ico('people'))}
-          <span>Equanima<span class="sub">Todo el equipo puede ver y editar</span></span></button>
+          <span>${abierto ? 'Abierto' : 'Equanima'}<span class="sub">${
+            abierto ? 'Cualquiera con el link ve y edita'
+                    : 'Todo el equipo puede ver y editar'}</span></span></button>
         <button class="menu-item" data-v="private">${raw(ico('user'))}
-          <span>Privado<span class="sub">Solo los miembros del tablero</span></span></button>`;
+          <span>Privado<span class="sub">Solo los miembros del tablero</span></span></button>
+        ${abierto ? raw(`<div class="menu-sep"></div>
+          <p class="small muted" style="margin:0;padding:2px 10px 6px">
+            El tablero está en modo abierto: "Privado" limita a los miembros,
+            pero cualquiera puede sumarse como miembro. Para cerrarlo de verdad
+            hay que correr <code>schema_acceso_dominio.sql</code>.</p>`) : ''}`;
       on(body, 'click', '[data-v]', (_, b) => {
         actualizarTablero({ visibility: b.dataset.v });
         ctl.close();

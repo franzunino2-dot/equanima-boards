@@ -1,0 +1,78 @@
+# ============================================================================
+# Deploy a GitHub Pages
+# ----------------------------------------------------------------------------
+# Genera config.js en el momento del deploy a partir de secrets del repo, así
+# las claves no quedan en el código. En Settings → Secrets and variables →
+# Actions hay que crear:
+#
+#   SUPABASE_URL        https://xxxx.supabase.co
+#   SUPABASE_ANON_KEY   la clave anon / public
+#
+# Y en Settings → Secrets and variables → Actions → Variables (opcionales):
+#
+#   ACCESS_MODE           publico | dominio     (default: publico)
+#   ALLOWED_EMAIL_DOMAIN  equanimasecurities.com
+#   WORKSPACE_NAME        Equanima
+#
+# En Settings → Pages, elegir Source: GitHub Actions.
+# ============================================================================
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generar config.js desde los secrets
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          ACCESS_MODE: ${{ vars.ACCESS_MODE || 'publico' }}
+          ALLOWED_EMAIL_DOMAIN: ${{ vars.ALLOWED_EMAIL_DOMAIN || 'equanimasecurities.com' }}
+          WORKSPACE_NAME: ${{ vars.WORKSPACE_NAME || 'Equanima' }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Faltan los secrets SUPABASE_URL y/o SUPABASE_ANON_KEY."
+            echo "::error::Settings → Secrets and variables → Actions → New repository secret"
+            exit 1
+          fi
+          cat > config.js <<EOF
+          /* Generado por .github/workflows/pages.yml — no editar a mano */
+          window.EQ_CONFIG = {
+            SUPABASE_URL: '${SUPABASE_URL}',
+            SUPABASE_ANON_KEY: '${SUPABASE_ANON_KEY}',
+            ACCESS_MODE: '${ACCESS_MODE}',
+            ALLOWED_EMAIL_DOMAIN: '${ALLOWED_EMAIL_DOMAIN}',
+            WORKSPACE_NAME: '${WORKSPACE_NAME}',
+            TIMEZONE: 'America/Argentina/Buenos_Aires',
+            STORAGE_BUCKET: 'attachments',
+            MAX_ATTACHMENT_MB: 25,
+          };
+          EOF
+          echo "config.js generado (modo: ${ACCESS_MODE})"
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4
