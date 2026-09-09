@@ -51,9 +51,10 @@ jobs:
           WORKSPACE_NAME: ${{ vars.WORKSPACE_NAME || 'Equanima' }}
         run: |
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
-            echo "::error::Faltan los secrets SUPABASE_URL y/o SUPABASE_ANON_KEY."
-            echo "::error::Settings → Secrets and variables → Actions → New repository secret"
-            exit 1
+            echo "::notice::Sin secrets cargados: se usa el config.js del repo tal cual."
+            echo "::notice::Para inyectarlos en el deploy, cargá SUPABASE_URL y"
+            echo "::notice::SUPABASE_ANON_KEY en Settings → Secrets and variables → Actions."
+            exit 0
           fi
           cat > config.js <<EOF
           /* Generado por .github/workflows/pages.yml — no editar a mano */

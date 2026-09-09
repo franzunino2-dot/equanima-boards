@@ -67,7 +67,10 @@ async function arrancar() {
 
     // En modo público se pide un apodo la primera vez, así el resto del
     // equipo ve un nombre y no "Invitado 8F2A" en cada tarjeta.
-    if (ES_PUBLICO && !localStorage.getItem(APODO_OK)) {
+    // Se pregunta si falta la bandera local O si el perfil sigue con el
+    // nombre autogenerado (p. ej. sesión nueva en un browser que ya la tenía).
+    const sinNombrePropio = /^Invitado /i.test(state.me.full_name || '');
+    if (ES_PUBLICO && (!localStorage.getItem(APODO_OK) || sinNombrePropio)) {
       pedirApodo(modo);
       return;
     }

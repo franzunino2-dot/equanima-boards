@@ -12,8 +12,8 @@ window.EQ_CONFIG = {
      Sacar de: Supabase → Project Settings → Data API / API Keys
      Dejar ambos en '' para correr en MODO DEMO (datos locales en el browser).
   ------------------------------------------------------------------------- */
-  SUPABASE_URL: '',
-  SUPABASE_ANON_KEY: '',
+  SUPABASE_URL: 'https://bulhnjecmdqbwbgmuhum.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_sfW_ByfLpYZnis2yp2v1RQ_o6I2Ok3J',
 
   /* --- Modo de acceso ------------------------------------------------------
      'publico'  → entra cualquiera con el link, se elige un apodo y edita.

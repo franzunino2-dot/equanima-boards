@@ -4,7 +4,10 @@
 
 import { CFG, uuid, initials } from '../util.js';
 
-const CDN = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
+// Versión fijada a propósito. Ojo: NO bajar de 2.116 — las builds viejas
+// (probado con 2.45.4) son anteriores a los canales privados de Realtime y la
+// presencia se une y se cierra al instante, sin error visible.
+const CDN = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/+esm';
 
 const REALTIME_TABLES = [
   'lists', 'cards', 'labels', 'card_labels', 'card_members', 'card_watchers',
@@ -199,6 +202,14 @@ export async function makeSupabaseBackend() {
      * @returns {Function} para desuscribirse
      */
     presencia(boardId, perfil, onChange) {
+      // PENDIENTE — la presencia todavía no funciona contra Supabase.
+      // Síntoma: el canal reporta SUBSCRIBED y enseguida CLOSED, track()
+      // devuelve 'ok' y presenceState() queda siempre vacío. No tira error.
+      // Descartado ya: políticas de realtime.messages (creadas, ver sección 5
+      // de schema_acceso_publico.sql), config private:true, token de sesión
+      // (es un JWT válido) y versión del cliente (probado 2.45.4 y 2.116.0).
+      // Falla en silencio y no afecta nada más: sin presencia simplemente no
+      // se dibujan los avatares del encabezado.
       const ch = sb.channel('presencia:' + boardId, {
         config: { presence: { key: perfil.id } },
       });

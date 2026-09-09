@@ -87,10 +87,16 @@ etiqueta") y vencimiento, con barra de filtros activos y contador. Búsqueda
 global de tarjetas en todos los tableros desde la barra superior.
 
 ### Colaboración en vivo
-Sincronización en tiempo real entre usuarios: si alguien mueve una tarjeta,
-la ves moverse. Además, **presencia** — avatares con un punto verde en el
-encabezado que muestran quién tiene el tablero abierto en este momento
-(deduplicado por persona, aunque tenga varias pestañas).
+Sincronización en tiempo real entre usuarios: si alguien mueve una tarjeta, la
+ves moverse. Verificado contra Postgres con dos sesiones en paralelo.
+
+**Presencia (los avatares de "quién está mirando"): no funciona todavía.** El
+código está en `js/backend/supabase.js` y falla en silencio — el canal reporta
+`SUBSCRIBED` y enseguida `CLOSED`, `track()` devuelve `ok` y `presenceState()`
+queda siempre vacío, sin ningún error. Descartados: las políticas de
+`realtime.messages`, `config.private: true`, el token de sesión (es un JWT
+válido) y la versión del cliente (probado 2.45.4 y 2.116.0). Sin presencia
+simplemente no se dibujan esos avatares; nada más se ve afectado.
 
 ### Otros
 Tema claro/oscuro, novedades de tus tarjetas, "mis tarjetas", archivo con
@@ -159,10 +165,18 @@ actividad) en un solo JSON, en lugar de una decena de queries.
 el mensaje al usuario, y `allowed_domain()` en `schema.sql` para el candado real.
 Si cambia, hay que actualizar los dos.
 
-**Las claves no viven en el repo.** `config.js` está commiteado con los campos
-vacíos (así el clon arranca en modo demo). El workflow de Pages lo regenera en
-cada deploy a partir de los secrets del repo. Si las pegás para probar local,
-no commitees ese cambio.
+**Las claves están en `config.js` y eso es correcto acá.** La clave es una
+`sb_publishable_...`, que Supabase declara explícitamente segura para publicar:
+identifica al proyecto, no autoriza nada por sí sola. Lo que autoriza es la
+sesión, y lo que filtra las filas es RLS. En modo `publico` cualquiera puede
+crear una sesión de invitado igual, así que ocultar la clave no protegería nada.
+
+Si algún día pasás a modo `dominio` y querés la clave fuera del repo, el
+workflow de Pages ya sabe regenerar `config.js` desde los secrets
+`SUPABASE_URL` y `SUPABASE_ANON_KEY`; si no están cargados, usa el `config.js`
+commiteado tal cual.
+
+Lo que **nunca** va acá es la `sb_secret_...`: esa saltea todas las políticas.
 
 ## Licencia
 

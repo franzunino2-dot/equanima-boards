@@ -103,15 +103,38 @@ create policy p_profiles_insert on public.profiles
   for insert with check (id = auth.uid() and public.is_workspace_member());
 
 -- ----------------------------------------------------------------------------
--- 5. Verificación
---    Debe devolver: modo = 'PUBLICO', candado_dominio = false
+-- 5. Realtime: habilitar presencia
+--    Los proyectos nuevos vienen con RLS activo en realtime.messages y CERO
+--    políticas. Eso no afecta a postgres_changes (los cambios de tarjetas se
+--    sincronizan igual), pero bloquea presencia y broadcast en silencio: el
+--    canal se une, track() devuelve 'ok' y presenceState() queda vacío.
+--
+--    Se habilita solo para los canales 'presencia:*' que usa la app, no para
+--    cualquier canal arbitrario.
+-- ----------------------------------------------------------------------------
+drop policy if exists eq_realtime_presencia_leer   on realtime.messages;
+drop policy if exists eq_realtime_presencia_enviar on realtime.messages;
+
+create policy eq_realtime_presencia_leer on realtime.messages
+  for select to authenticated
+  using (realtime.topic() like 'presencia:%');
+
+create policy eq_realtime_presencia_enviar on realtime.messages
+  for insert to authenticated
+  with check (realtime.topic() like 'presencia:%');
+
+-- ----------------------------------------------------------------------------
+-- 6. Verificación
+--    Debe devolver: modo = 'PUBLICO', candado_dominio = false, presencia = 2
 -- ----------------------------------------------------------------------------
 select
   case when public.is_workspace_member() is not null then 'PUBLICO' end as modo,
   exists (
     select 1 from pg_trigger
      where tgname = 'trg_enforce_email_domain' and not tgisinternal
-  ) as candado_dominio;
+  ) as candado_dominio,
+  (select count(*) from pg_policies
+    where schemaname = 'realtime' and tablename = 'messages') as presencia;
 
 -- ============================================================================
 -- LISTO. Falta activar "Allow anonymous sign-ins" en el dashboard.
