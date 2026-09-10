@@ -202,14 +202,15 @@ export async function makeSupabaseBackend() {
      * @returns {Function} para desuscribirse
      */
     presencia(boardId, perfil, onChange) {
-      // PENDIENTE — la presencia todavía no funciona contra Supabase.
-      // Síntoma: el canal reporta SUBSCRIBED y enseguida CLOSED, track()
-      // devuelve 'ok' y presenceState() queda siempre vacío. No tira error.
-      // Descartado ya: políticas de realtime.messages (creadas, ver sección 5
-      // de schema_acceso_publico.sql), config private:true, token de sesión
-      // (es un JWT válido) y versión del cliente (probado 2.45.4 y 2.116.0).
-      // Falla en silencio y no afecta nada más: sin presencia simplemente no
-      // se dibujan los avatares del encabezado.
+      // La presencia necesita DOS cosas, y sin cualquiera de las dos falla en
+      // silencio (el canal reporta SUBSCRIBED y enseguida CLOSED, track()
+      // devuelve 'ok' y presenceState() queda vacío, sin ningún error):
+      //   1. las políticas de realtime.messages (sección 5 de
+      //      schema_acceso_publico.sql)
+      //   2. un cliente >= 2.116, posterior a los canales privados de Realtime
+      // Si al depurar esto parece no andar en local, revisar primero que el
+      // browser no tenga cacheado un supabase-js viejo: pasó, y mandó la
+      // investigación media hora para el lado equivocado.
       const ch = sb.channel('presencia:' + boardId, {
         config: { presence: { key: perfil.id } },
       });

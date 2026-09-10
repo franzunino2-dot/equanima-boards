@@ -88,15 +88,21 @@ global de tarjetas en todos los tableros desde la barra superior.
 
 ### Colaboración en vivo
 Sincronización en tiempo real entre usuarios: si alguien mueve una tarjeta, la
-ves moverse. Verificado contra Postgres con dos sesiones en paralelo.
+ves moverse. Verificado en producción con dos sesiones en paralelo.
 
-**Presencia (los avatares de "quién está mirando"): no funciona todavía.** El
-código está en `js/backend/supabase.js` y falla en silencio — el canal reporta
-`SUBSCRIBED` y enseguida `CLOSED`, `track()` devuelve `ok` y `presenceState()`
-queda siempre vacío, sin ningún error. Descartados: las políticas de
-`realtime.messages`, `config.private: true`, el token de sesión (es un JWT
-válido) y la versión del cliente (probado 2.45.4 y 2.116.0). Sin presencia
-simplemente no se dibujan esos avatares; nada más se ve afectado.
+**Presencia**: avatares con un punto verde en el encabezado que muestran quién
+tiene el tablero abierto en este momento, deduplicado por persona aunque tenga
+varias pestañas.
+
+Depende de dos cosas y sin cualquiera de las dos falla **en silencio** (el canal
+reporta `SUBSCRIBED` y enseguida `CLOSED`, `track()` devuelve `ok` y
+`presenceState()` queda vacío, sin ningún error):
+
+1. las políticas de `realtime.messages` — sección 5 de `schema_acceso_publico.sql`
+2. `supabase-js` >= 2.116, posterior a los canales privados de Realtime
+
+Si parece no andar en local, revisá primero que el browser no tenga cacheado un
+`supabase-js` viejo antes de buscar el problema en la base.
 
 ### Otros
 Tema claro/oscuro, novedades de tus tarjetas, "mis tarjetas", archivo con
