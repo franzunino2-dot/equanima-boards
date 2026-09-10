@@ -250,6 +250,29 @@
 .card-title { font-size: 13.5px; line-height: 1.42; word-break: break-word; }
 .card-num { color: var(--text-3); font-family: var(--mono); font-size: 11px; margin-right: 4px; }
 
+/* Círculo de "completada" en el frente de la tarjeta.
+   Se deja siempre visible (aunque tenue) en vez de mostrarlo solo al pasar el
+   mouse: si no, no se descubre, y además no existe hover en celular. */
+.card-check {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; flex: none;
+  margin-right: 5px; vertical-align: -3px;
+  border: 2px solid var(--border-strong);
+  border-radius: 50%;
+  color: transparent;
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
+}
+.card-check svg { width: 11px; height: 11px; }
+.card-check:hover { border-color: var(--green); color: var(--green); }
+.card-check:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; }
+.card-check.on {
+  background: var(--green); border-color: var(--green); color: #fff;
+}
+.card-check.on:hover { filter: brightness(1.08); color: #fff; }
+
+.card.completada .card-title { color: var(--text-2); }
+.card.completada .card-num { text-decoration: line-through; }
+
 .card-badges {
   display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px;
   margin-top: 6px; min-height: 22px;

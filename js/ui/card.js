@@ -12,7 +12,7 @@ import {
   nombreDe, perfil, perfilesUtiles,
   actualizarTarjeta, archivarTarjeta, borrarTarjeta, copiarTarjeta, moverTarjeta,
   toggleEtiqueta, toggleMiembroTarjeta, toggleSeguir, fijarFechas,
-  toggleVencimientoCumplido, setCover,
+  toggleCompletada, setCover,
   crearEtiqueta, agregarChecklist, actualizarChecklist, borrarChecklist,
   agregarItem, actualizarItem, borrarItem,
   comentar, editarComentario, borrarComentario,
@@ -89,7 +89,11 @@ function pintar() {
                              : `background:var(--l-${esc(cover.value)})`}"></div>`) : ''}
 
     <div class="cd-head">
-      ${raw(ico('board'))}
+      <button class="cd-check ${c.is_complete ? 'on' : ''}" data-a="toggle-done"
+              title="${c.is_complete ? 'Marcar como pendiente' : 'Marcar como completada'}"
+              aria-pressed="${c.is_complete ? 'true' : 'false'}">
+        ${raw(ico('check'))}
+      </button>
       <div>
         <div class="cd-title" data-a="rename">${c.title}</div>
         <div class="cd-crumb">
@@ -126,8 +130,8 @@ function pintar() {
             <div class="cd-meta">
               <h5>${c.start_at && c.due_at ? 'Fechas' : c.due_at ? 'Vencimiento' : 'Inicio'}</h5>
               <div class="due-pill" data-a="dates">
-                ${c.due_at ? `<input type="checkbox" data-a="due-done" ${c.due_complete ? 'checked' : ''}
-                    title="Marcar como cumplida">` : ''}
+                ${c.due_at ? `<input type="checkbox" data-a="toggle-done" ${c.is_complete ? "checked" : ""}
+                    title="Marcar como completada">` : ''}
                 <span>${c.start_at ? esc(fechaCorta(c.start_at)) + ' → ' : ''}${esc(c.due_at ? fechaHora(c.due_at) : '')}</span>
                 ${ds === 'late' ? '<span class="tag late">Vencida</span>' : ''}
                 ${ds === 'soon' ? '<span class="tag soon">Pronto</span>' : ''}
@@ -360,7 +364,7 @@ function conectar(c) {
       case 'watch':       return toggleSeguir(c.id);
       case 'cmt-save':    return enviarComentario();
 
-      case 'due-done':    return toggleVencimientoCumplido(c.id);
+      case "toggle-done":  return toggleCompletada(c.id);
 
       case 'link': {
         await copiar(location.origin + location.pathname + `#/b/${state.boardId}/c/${c.id}`);

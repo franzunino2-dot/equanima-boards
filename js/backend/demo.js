@@ -97,7 +97,7 @@ function seed() {
       id: uuid(), board_id: b.id, list_id: listas[li].id,
       number: ++b.card_counter, title, description: '',
       position: (d.cards.filter((x) => x.list_id === listas[li].id).length + 1) * 1000,
-      start_at: null, due_at: null, due_complete: false, cover: {},
+      start_at: null, due_at: null, is_complete: false, cover: {},
       is_archived: false, created_by: ME.id, created_at: iso(-4), updated_at: iso(-1),
       ...extra,
     };
@@ -115,7 +115,7 @@ function seed() {
     due_at: iso(3),
   });
   const c4 = mk(2, 'Revisar comisiones de productores', { due_at: iso(-1) });
-  const c5 = mk(3, 'Migrar de Trello a Equanima Boards', { due_complete: true, due_at: iso(-2) });
+  const c5 = mk(3, 'Migrar de Trello a Equanima Boards', { is_complete: true, due_at: iso(-2) });
 
   d.card_labels.push(
     { card_id: c1.id, label_id: L[2].id, board_id: b.id },

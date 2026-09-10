@@ -31,8 +31,8 @@ const PLANTILLAS = {
   card_unassign:      (a) => `desasignó a <b>${esc(a.data.nombre)}</b>`,
   card_due:           (a) => `puso vencimiento el <b>${esc(fechaHora(a.data.due))}</b>`,
   card_due_clear:     ()  => 'quitó el vencimiento',
-  card_due_done:      ()  => 'marcó el vencimiento como cumplido',
-  card_due_open:      ()  => 'reabrió el vencimiento',
+  card_completar:     (a) => `completó <b>${titulo(a)}</b>`,
+  card_reabrir:       (a) => `reabrió <b>${titulo(a)}</b>`,
   card_desc:          ()  => 'actualizó la descripción',
 
   att_add:            (a) => `adjuntó <b>${esc(a.data.name)}</b>`,

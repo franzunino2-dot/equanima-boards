@@ -12,7 +12,8 @@ import {
   progresoCheck, comentariosDe, adjuntosDe, filtroActivo, nuevoFiltro,
   agregarLista, actualizarLista, moverLista, borrarLista, duplicarLista,
   ordenarLista, archivarTodasLasTarjetas, moverTodasLasTarjetas,
-  agregarTarjeta, moverTarjeta, actualizarTarjeta, actualizarTablero, borrarTablero,
+  agregarTarjeta, moverTarjeta, actualizarTarjeta, toggleCompletada,
+  actualizarTablero, borrarTablero,
   toggleDestacado, agregarMiembro, quitarMiembro, cambiarRol,
   crearEtiqueta, actualizarEtiqueta, borrarEtiqueta,
   listasArchivadas, tarjetasArchivadas, archivarTarjeta, borrarTarjeta,
@@ -359,7 +360,7 @@ function pintarTarjeta(c) {
   }
 
   return html`
-    <div class="card ${c.due_complete ? 'done-cover' : ''}" data-card="${c.id}" data-pos="${c.position}">
+    <div class="card ${c.is_complete ? 'completada' : ''}" data-card="${c.id}" data-pos="${c.position}">
       ${cover ? raw(`<div class="card-cover ${cover.size === 'tall' ? 'tall' : ''}" style="${
         cover.type === 'image' ? `background-image:url('${esc(cover.value)}')` : `background:var(--l-${esc(cover.value)})`
       }"></div>`) : ''}
@@ -370,7 +371,16 @@ function pintarTarjeta(c) {
       ${labels.length ? raw(`<div class="card-labels">${labels.map((l) => `
         <span class="label-chip" style="${labelStyle(l.color)}" title="${esc(l.name || l.color)}">${esc(l.name || '')}</span>`).join('')}</div>`) : ''}
 
-      <div class="card-title"><span class="card-num">#${c.number}</span>${c.title}</div>
+      <div class="card-title">
+        <button class="card-check ${c.is_complete ? 'on' : ''}"
+                data-act="toggle-done" data-card="${c.id}"
+                title="${c.is_complete ? 'Marcar como pendiente' : 'Marcar como completada'}"
+                aria-label="${c.is_complete ? 'Marcar como pendiente' : 'Marcar como completada'}"
+                aria-pressed="${c.is_complete ? 'true' : 'false'}">
+          ${raw(ico('check'))}
+        </button>
+        <span class="card-num">#${c.number}</span>${c.title}
+      </div>
 
       ${badges.length || miembros.length ? raw(`
         <div class="card-badges">
@@ -395,6 +405,7 @@ async function accionCanvas(ev, btn) {
 
   if (act === 'add-card') return abrirComposerTarjeta(listId, false);
   if (act === 'add-list') return abrirComposerLista();
+  if (act === 'toggle-done') return toggleCompletada(btn.dataset.card);
   if (act === 'list-menu') return menuLista(btn, listId);
   if (act === 'quick-edit') return edicionRapida(btn.closest('.card'), btn.dataset.card);
   if (act === 'expand') { state.collapsed.delete(listId); return pintarTodo(); }

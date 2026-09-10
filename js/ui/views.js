@@ -166,7 +166,7 @@ export function renderResumen(host) {
 
   const vencidas = cards.filter((c) => dueState(c) === 'late').length;
   const proximas = cards.filter((c) => dueState(c) === 'soon').length;
-  const cumplidas = cards.filter((c) => c.due_complete).length;
+  const cumplidas = cards.filter((c) => c.is_complete).length;
   const sinAsignar = cards.filter((c) => miembrosDe(c.id).length === 0).length;
 
   const porLista = listas.map((l) => [l.title, tarjetasDe(l.id).length]);
@@ -188,7 +188,7 @@ export function renderResumen(host) {
           <div class="stat-row"><span class="stat-num">${total}</span><span class="muted">tarjetas activas</span></div>
           <div class="stat-row"><span class="stat-num" style="color:var(--red)">${vencidas}</span><span class="muted">vencidas</span></div>
           <div class="stat-row"><span class="stat-num" style="color:var(--yellow)">${proximas}</span><span class="muted">vencen en 36 h</span></div>
-          <div class="stat-row"><span class="stat-num" style="color:var(--green)">${cumplidas}</span><span class="muted">cumplidas</span></div>
+          <div class="stat-row"><span class="stat-num" style="color:var(--green)">${cumplidas}</span><span class="muted">completadas</span></div>
           <div class="stat-row"><span class="stat-num">${sinAsignar}</span><span class="muted">sin responsable</span></div>
         </div>
 
@@ -236,7 +236,7 @@ function barras(pares, max) {
 
 function proximosVencimientos(cards) {
   const próx = cards
-    .filter((c) => c.due_at && !c.due_complete)
+    .filter((c) => c.due_at && !c.is_complete)
     .sort((a, b) => new Date(a.due_at) - new Date(b.due_at))
     .slice(0, 8);
   if (!próx.length) return '<p class="small muted">No hay vencimientos pendientes.</p>';

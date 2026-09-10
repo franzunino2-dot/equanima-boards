@@ -169,7 +169,7 @@ export const ymd = (d) =>
 /** Estado del vencimiento: 'done' | 'late' | 'soon' | 'ok' */
 export function dueState(card) {
   if (!card.due_at) return null;
-  if (card.due_complete) return 'done';
+  if (card.is_complete) return 'done';
   const t = new Date(card.due_at).getTime() - Date.now();
   if (t < 0) return 'late';
   if (t < 36 * 3600 * 1000) return 'soon';

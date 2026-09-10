@@ -119,7 +119,9 @@ create table if not exists public.cards (
   position      double precision not null default 1000,
   start_at      timestamptz,
   due_at        timestamptz,
-  due_complete  boolean not null default false,
+  -- Completada: aplica con o sin fecha de vencimiento (el circulito de la
+  -- tarjeta). Antes se llamaba due_complete; ver migracion_01.
+  is_complete   boolean not null default false,
   cover         jsonb not null default '{}'::jsonb,
   is_archived   boolean not null default false,
   created_by    uuid references public.profiles(id) on delete set null,

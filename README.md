@@ -79,6 +79,13 @@ alfabético), límite de tarjetas por lista (WIP) con aviso visual al pasarse,
 archivar todas las tarjetas, mover todas a otra lista, archivar y eliminar.
 
 ### Tarjetas
+**Completar**: el círculo del frente de la tarjeta la marca como hecha, tenga
+fecha de vencimiento o no. Es el mismo control que el círculo de "Marcar como
+completada" de Trello, y aparece también al lado del título en el detalle.
+En la base es la columna `cards.is_complete` — antes se llamaba `due_complete`
+y solo servía si la tarjeta tenía fecha; ver
+[`migracion_01_completar_tarjetas.sql`](supabase/migracion_01_completar_tarjetas.sql).
+
 Numeración incremental por tablero (`#12`), título y descripción en Markdown,
 etiquetas de colores con nombre, miembros asignados, fechas de inicio y
 vencimiento con marca de cumplido, portada de color o imagen, checklists

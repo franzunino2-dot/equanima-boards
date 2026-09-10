@@ -121,7 +121,7 @@ export function pasaFiltro(c) {
     else {
       if (!d) return false;
       const ms = d.getTime() - Date.now();
-      if (f.due === 'vence' && !(ms < 0 && !c.due_complete)) return false;
+      if (f.due === 'vence' && !(ms < 0 && !c.is_complete)) return false;
       if (f.due === 'hoy' && !(ms < 86400e3)) return false;
       if (f.due === 'semana' && !(ms < 7 * 86400e3)) return false;
       if (f.due === 'mes' && !(ms < 31 * 86400e3)) return false;
@@ -539,7 +539,7 @@ export async function agregarTarjeta(listId, title, extra = {}) {
     id: uuid(), board_id: state.boardId, list_id: listId,
     title: title.trim(), description: extra.description || '',
     position: pos, due_at: extra.due_at || null, start_at: null,
-    due_complete: false, cover: extra.cover || {}, is_archived: false,
+    is_complete: false, cover: extra.cover || {}, is_archived: false,
     created_by: state.me.id, number: 0,
     created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   };
@@ -685,10 +685,12 @@ export async function fijarFechas(cardId, { start, due }) {
     { logType: due ? 'card_due' : 'card_due_clear', logData: { due } });
 }
 
-export async function toggleVencimientoCumplido(cardId) {
+/** Marca o desmarca la tarjeta como completada (con o sin vencimiento). */
+export async function toggleCompletada(cardId) {
   const c = state.cards.get(cardId); if (!c) return;
-  await actualizarTarjeta(cardId, { due_complete: !c.due_complete },
-    { logType: c.due_complete ? 'card_due_open' : 'card_due_done' });
+  await actualizarTarjeta(cardId, { is_complete: !c.is_complete },
+    { logType: c.is_complete ? 'card_reabrir' : 'card_completar',
+      logData: { title: c.title } });
 }
 
 export const setCover = (cardId, cover) => actualizarTarjeta(cardId, { cover: cover || {} });

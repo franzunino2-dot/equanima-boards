@@ -15,6 +15,21 @@
   padding: 18px 48px 4px 20px;
 }
 .cd-head > svg { width: 22px; height: 22px; margin-top: 5px; color: var(--text-2); }
+
+/* Círculo de "completada", al lado del título */
+.cd-check {
+  display: flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; margin-top: 4px;
+  border: 2px solid var(--border-strong);
+  border-radius: 50%;
+  color: transparent;
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
+}
+.cd-check svg { width: 15px; height: 15px; }
+.cd-check:hover { border-color: var(--green); color: var(--green); }
+.cd-check:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; }
+.cd-check.on { background: var(--green); border-color: var(--green); color: #fff; }
+.cd-check.on:hover { filter: brightness(1.08); color: #fff; }
 .cd-title {
   font-size: 19px; font-weight: 700; line-height: 1.35;
   padding: 4px 8px; margin: -4px -8px;
