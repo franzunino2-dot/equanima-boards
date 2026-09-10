@@ -212,9 +212,48 @@ export function labelStyle(color) {
   return `background:var(--l-${c});color:var(--l-${c}-t)`;
 }
 
+/**
+ * Iniciales de los nombres del equipo, desambiguadas entre sí.
+ * "Rena" y "Regi" darían las dos "RE"; en los avatares chicos de las tarjetas
+ * eso se lee igual. Se prueban variantes hasta encontrar una libre.
+ * Se calcula una sola vez y en el orden de CFG.EQUIPO, así es estable.
+ */
+let mapaEquipo = null;
+function inicialesEquipo() {
+  if (mapaEquipo) return mapaEquipo;
+  mapaEquipo = new Map();
+  const usadas = new Set();
+  for (const nombre of (Array.isArray(CFG.EQUIPO) ? CFG.EQUIPO : [])) {
+    const n = String(nombre).trim();
+    if (!n) continue;
+    const c = n.toUpperCase();
+    const variantes = [
+      c.slice(0, 2),                              // Fran  -> FR
+      c[0] + (c[2] || ''),                        // Regi  -> RG
+      c[0] + (c[c.length - 1] || ''),             // Rena  -> RA
+      c.slice(0, 3),                              // Chelo -> CHE
+      c,
+    ].filter((v) => v && v.length >= 2);
+    const elegida = variantes.find((v) => !usadas.has(v)) || c.slice(0, 2);
+    usadas.add(elegida);
+    mapaEquipo.set(n.toLowerCase(), elegida);
+  }
+  return mapaEquipo;
+}
+
+export const inicialesDeEquipo = (nombre) =>
+  inicialesEquipo().get(String(nombre || '').trim().toLowerCase()) || null;
+
 export function initials(name = '', email = '') {
   const src = (name || email.split('@')[0] || '?').trim();
+
+  // Si es alguien del equipo, se usan las iniciales desambiguadas
+  const delEquipo = inicialesDeEquipo(src);
+  if (delEquipo) return delEquipo;
+
   const p = src.split(/[\s.]+/).filter(Boolean);
+  // Un solo nombre ("Chelo") rinde mejor con dos letras que con una sola
+  if (p.length === 1) return p[0].slice(0, 2).toUpperCase();
   return ((p[0]?.[0] || '') + (p[1]?.[0] || '')).toUpperCase() || src[0].toUpperCase();
 }
 
@@ -226,7 +265,11 @@ export function avatarHTML(p, cls = '') {
   if (p.avatar_url) {
     return html`<span class="avatar ${raw(cls)}" title="${title}"><img src="${p.avatar_url}" alt="${title}" referrerpolicy="no-referrer"></span>`;
   }
-  return html`<span class="avatar ${raw(cls)} ${raw(avatarClass(p.user_id || p.id || title))}" title="${title}">${ini}</span>`;
+  // El color se deriva del NOMBRE, no del id: en modo público cada dispositivo
+  // tiene su propio id anónimo, así que por id la misma persona cambiaría de
+  // color según desde dónde entre.
+  const semilla = p.full_name || p.email || p.user_id || p.id || title;
+  return html`<span class="avatar ${raw(cls)} ${raw(avatarClass(semilla))}" title="${title}">${ini}</span>`;
 }
 
 /** Copia al portapapeles con fallback. */

@@ -16,7 +16,7 @@ import {
   toggleDestacado, agregarMiembro, quitarMiembro, cambiarRol,
   crearEtiqueta, actualizarEtiqueta, borrarEtiqueta,
   listasArchivadas, tarjetasArchivadas, archivarTarjeta, borrarTarjeta,
-  nombreDe, esMiembroDelTablero, actividadDe,
+  nombreDe, esMiembroDelTablero, actividadDe, perfilesUtiles,
 } from '../store.js';
 import { api } from '../api.js';
 import { initDnD, arrastrando } from '../dnd.js';
@@ -764,7 +764,7 @@ function menuMiembros(anchor) {
   popover({
     anchor, title: 'Miembros del tablero', wide: true,
     render(body, ctl) {
-      const fuera = state.profiles.filter((p) => !esMiembroDelTablero(p.id));
+      const fuera = perfilesUtiles().filter((p) => !esMiembroDelTablero(p.id));
       body.innerHTML = html`
         ${raw(state.members.map((m) => `
           <div class="row" style="margin-bottom:10px">

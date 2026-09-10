@@ -365,6 +365,34 @@ svg { fill: currentColor; }
 .auth-card h1 { margin: 0; font-size: 21px; }
 .auth-sub { margin: 4px 0 24px; color: var(--text-3); font-size: 13px; }
 .auth-card .btn-ghost { margin-top: 10px; color: var(--text-3); font-size: 13px; }
+/* Selector de "¿quién sos?" — pantalla de entrada y modal de cambio */
+.equipo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 8px;
+  text-align: left;
+}
+.equipo-btn {
+  position: relative;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--r);
+  background: var(--surface-hover);
+  border: 2px solid transparent;
+  font-size: 14px; font-weight: 600;
+  transition: background .12s ease, border-color .12s ease, transform .06s ease;
+}
+.equipo-btn:hover { background: var(--surface-active); border-color: var(--border-strong); }
+.equipo-btn:active { transform: translateY(1px); }
+.equipo-btn:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; }
+.equipo-btn .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.equipo-btn.yo { border-color: var(--brand-500); background: var(--surface-active); }
+.equipo-btn .dot {
+  position: absolute; top: 6px; right: 6px;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green);
+}
+
 .auth-note { margin: 20px 0 0; font-size: 12px; color: var(--text-3); }
 .auth-note b { color: var(--text-2); }
 .auth-error {

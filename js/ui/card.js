@@ -9,7 +9,7 @@ import {
 import {
   state, bus, etiquetasDe, miembrosDe, checklistsDe, itemsDe, comentariosDe,
   adjuntosDe, actividadDe, progresoCheck, sigo, listasVisibles, tarjetasDe,
-  nombreDe, perfil,
+  nombreDe, perfil, perfilesUtiles,
   actualizarTarjeta, archivarTarjeta, borrarTarjeta, copiarTarjeta, moverTarjeta,
   toggleEtiqueta, toggleMiembroTarjeta, toggleSeguir, fijarFechas,
   toggleVencimientoCumplido, setCover,
@@ -614,7 +614,7 @@ function menuMiembrosDeTarjeta(anchor, cardId) {
     anchor, title: 'Miembros',
     render(body, ctl) {
       const puestos = new Set(miembrosDe(cardId).map((m) => m.user_id));
-      const equipo = state.profiles;
+      const equipo = perfilesUtiles();
       body.innerHTML = html`
         <label class="field-label">Del tablero</label>
         ${raw(state.members.map((m) => fila(m.user_id, m)).join(''))}

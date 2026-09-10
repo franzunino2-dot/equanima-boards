@@ -26,8 +26,31 @@ llaman a una única función `is_workspace_member()` que los dos `.sql` reemplaz
 Por eso cambiar de modo es correr un archivo, no una migración.
 
 > En modo `publico` cualquiera con la URL puede leer, editar y borrar tarjetas y
-> listas, y la identidad es un apodo elegido por cada uno. Lo único reservado al
-> creador es eliminar un tablero completo. No pongas datos de clientes ahí.
+> listas. Lo único reservado al creador es eliminar un tablero completo. No
+> pongas datos de clientes ahí.
+
+## El equipo
+
+En modo `publico` no hay login: al entrar, cada uno **elige quién es** de una
+lista fija definida en `EQUIPO`, dentro de [`config.js`](config.js). Sirve para
+que los nombres queden consistentes (nadie se escribe "Fran", "fran" y
+"Francisco" en tarjetas distintas).
+
+Para dar de alta o de baja a alguien se edita solo esa lista. Quien no esté
+puede entrar igual con **"No estoy en la lista"**, que habilita un campo libre.
+
+Cada nombre tiene **color e iniciales estables derivados del texto**, así la
+misma persona se ve igual en todos los dispositivos —  en modo público cada
+navegador es una sesión anónima distinta, así que derivarlos del id haría que
+alguien cambiara de color según desde dónde entre.
+
+Las iniciales se **desambiguan entre sí**: `Rena` y `Regi` darían las dos "RE",
+que en los avatares chicos de las tarjetas se lee igual, así que quedan `RE` y
+`RG`. La desambiguación respeta el orden de la lista, de modo que agregar
+alguien al final no le cambia las iniciales a los que ya estaban.
+
+Se puede cambiar de identidad después desde el avatar → **Cambiar quién soy**.
+Lo ya hecho queda a nombre del anterior.
 
 ## Probarlo ya mismo
 

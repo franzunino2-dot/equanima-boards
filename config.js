@@ -40,6 +40,23 @@ window.EQ_CONFIG = {
   /* Nombre del espacio de trabajo (aparece en la barra superior) */
   WORKSPACE_NAME: 'Equanima',
 
+  /* --- El equipo -----------------------------------------------------------
+     En modo 'publico' no hay login, así que al entrar cada uno elige quién es
+     de esta lista. Sirve para que los nombres queden consistentes en todas
+     las tarjetas (nadie se escribe "Fran", "fran" y "Francisco").
+
+     Para dar de alta o de baja a alguien, editar acá nada más. El orden es el
+     que se ve en pantalla. Si la lista queda vacía, la app vuelve a pedir el
+     nombre escrito a mano.
+
+     Cada nombre tiene color y iniciales estables, derivados del texto, así
+     que la misma persona se ve igual en todos los dispositivos.
+  ------------------------------------------------------------------------- */
+  EQUIPO: [
+    'Fran', 'Emi', 'Uru', 'Rena', 'Regi', 'Delfi',
+    'Agos', 'Borja', 'Chelo', 'Tiago', 'Luki',
+  ],
+
   /* Zona horaria usada para fechas de vencimiento y calendario */
   TIMEZONE: 'America/Argentina/Buenos_Aires',
 

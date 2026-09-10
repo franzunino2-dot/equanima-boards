@@ -165,6 +165,17 @@ export function progresoCheck(cardId) {
   return { hechos, total: its.length, pct: its.length ? Math.round(hechos / its.length * 100) : 0 };
 }
 
+/**
+ * Perfiles que vale la pena ofrecer para asignar tarjetas.
+ * En modo público cada browser que entra crea su perfil, así que hay que
+ * dejar afuera a los que nunca eligieron nombre ("Invitado 8F2A"): son ruido.
+ * Los que sí están asignados a algo se siguen viendo igual, porque eso sale
+ * de state.members, no de acá.
+ */
+export const perfilesUtiles = () =>
+  state.profiles.filter((p) =>
+    p.id === state.me?.id || !/^Invitado /i.test(p.full_name || ''));
+
 export const perfil = (id) =>
   state.profiles.find((p) => p.id === id) ||
   state.members.find((m) => m.user_id === id) ||

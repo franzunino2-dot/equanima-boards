@@ -2,7 +2,10 @@
    app.js — arranque, autenticación, router y atajos de teclado
    ========================================================================== */
 
-import { $, html, raw, esc, on, CFG, avatarHTML, debounce, haceRato } from './util.js';
+import {
+  $, html, raw, esc, on, node, CFG, avatarHTML, avatarClass, debounce, haceRato,
+  inicialesDeEquipo,
+} from './util.js';
 import { api, initApi, configurado, demoForzado, activarDemo, salirDemo } from './api.js';
 import {
   state, bus, cargarSesion, cargarBoards, cerrarTablero, listasVisibles,
@@ -82,46 +85,58 @@ async function arrancar() {
   }
 }
 
-/* --------------------------- pantalla de apodo -------------------------- */
+/* ------------------------- "¿quién sos?" -------------------------------- */
+
+const EQUIPO = Array.isArray(CFG.EQUIPO) ? CFG.EQUIPO.filter(Boolean) : [];
+
+/**
+ * Grilla de nombres del equipo. La usan la pantalla de entrada y el modal de
+ * "cambiar quién soy", así que vive en una sola función.
+ * @param {(nombre:string)=>void} onElegir
+ */
+function grillaEquipo(onElegir, actual) {
+  // Marca los nombres que ya tienen perfil, como referencia. No bloquea:
+  // la misma persona puede entrar desde dos dispositivos.
+  const enUso = new Set(
+    state.profiles.map((p) => (p.full_name || '').trim()).filter(Boolean));
+
+  const box = node(html`
+    <div class="equipo-grid">
+      ${raw(EQUIPO.map((n) => `
+        <button class="equipo-btn ${n === actual ? 'yo' : ''}" data-nombre="${esc(n)}">
+          <span class="avatar avatar-sm ${avatarClass(n)}">${esc(inicialesDe(n))}</span>
+          <span class="nm">${esc(n)}</span>
+          ${enUso.has(n) && n !== actual ? '<span class="dot" title="Ya entró alguien con este nombre"></span>' : ''}
+        </button>`).join(''))}
+    </div>`);
+
+  on(box, 'click', '[data-nombre]', (_, b) => onElegir(b.dataset.nombre));
+  return box;
+}
+
+const inicialesDe = (n) => inicialesDeEquipo(n) || n.trim().slice(0, 2).toUpperCase();
 
 function pedirApodo(modo) {
   boot.hidden = true;
   appEl.hidden = true;
   authEl.hidden = false;
 
-  const sugerido = /^Invitado /i.test(state.me.full_name || '') ? '' : (state.me.full_name || '');
-
-  authEl.querySelector('.auth-card').innerHTML = html`
+  const card = authEl.querySelector('.auth-card');
+  card.innerHTML = html`
     <div class="auth-logo">EB</div>
-    <h1>¿Cómo te llamás?</h1>
-    <p class="auth-sub">Así el equipo sabe quién movió qué</p>
-
-    <input class="input" id="apodo" maxlength="40" autocomplete="name"
-           placeholder="Nombre y apellido" value="${sugerido}"
-           style="text-align:center;font-size:15px;height:42px">
-
-    <button class="btn btn-primary btn-block" id="apodo-ok" style="margin-top:14px;height:42px">
-      Entrar al tablero
-    </button>
-
-    <p class="auth-note">
-      Tablero abierto: entra cualquiera con el link.<br>
-      Podés cambiar tu nombre después desde tu avatar.
-    </p>
+    <h1>¿Quién sos?</h1>
+    <p class="auth-sub">Elegí tu nombre para entrar</p>
+    <div id="equipo"></div>
+    <button class="btn btn-ghost btn-block" id="otro">No estoy en la lista</button>
     <p id="apodo-error" class="auth-error" hidden></p>`;
 
-  const inp = $('#apodo');
-  const btn = $('#apodo-ok');
   const err = $('#apodo-error');
-  inp.focus();
 
-  const entrar = async () => {
-    const v = inp.value.trim();
-    if (v.length < 2) { inp.focus(); return; }
-    btn.disabled = true;
-    btn.textContent = 'Entrando…';
+  const entrar = async (nombre) => {
+    $('#equipo').style.pointerEvents = 'none';
+    $('#equipo').style.opacity = '.5';
     try {
-      const p = await api.setNombre(v);
+      const p = await api.setNombre(nombre);
       state.me = { ...state.me, ...p };
       const i = state.profiles.findIndex((x) => x.id === state.me.id);
       if (i >= 0) state.profiles[i] = state.me;
@@ -129,15 +144,36 @@ function pedirApodo(modo) {
       mostrarApp(modo);
     } catch (e) {
       console.error(e);
-      btn.disabled = false;
-      btn.textContent = 'Entrar al tablero';
+      $('#equipo').style.pointerEvents = '';
+      $('#equipo').style.opacity = '';
       err.textContent = e.message || 'No se pudo guardar el nombre';
       err.hidden = false;
     }
   };
 
-  btn.onclick = entrar;
-  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') entrar(); });
+  if (EQUIPO.length) {
+    $('#equipo').appendChild(grillaEquipo(entrar));
+  } else {
+    campoLibre();
+  }
+
+  // Salida de emergencia: alguien que no esté en la lista del config
+  $('#otro').onclick = campoLibre;
+
+  function campoLibre() {
+    $('#otro')?.remove();
+    $('#equipo').innerHTML = html`
+      <input class="input" id="apodo" maxlength="40" autocomplete="name"
+             placeholder="Tu nombre" style="text-align:center;font-size:15px;height:42px">
+      <button class="btn btn-primary btn-block" id="apodo-ok" style="margin-top:10px;height:42px">
+        Entrar
+      </button>`;
+    const inp = $('#apodo');
+    inp.focus();
+    const ok = () => { if (inp.value.trim().length >= 2) entrar(inp.value.trim()); else inp.focus(); };
+    $('#apodo-ok').onclick = ok;
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') ok(); });
+  }
 }
 
 function mostrarLogin(error) {
@@ -308,7 +344,7 @@ function menuCuenta(anchor) {
           </span>
         </div>
         <div class="menu-sep"></div>
-        <button class="menu-item" data-x="nombre">${raw(ico('user'))} Cambiar mi nombre</button>
+        <button class="menu-item" data-x="nombre">${raw(ico('user'))} Cambiar quién soy</button>
         <button class="menu-item" data-x="theme">${raw(ico('palette'))} Cambiar tema</button>
         <button class="menu-item" data-x="shortcuts">${raw(ico('keyboard'))} Atajos de teclado</button>
         <div class="menu-sep"></div>
@@ -333,13 +369,7 @@ function menuCuenta(anchor) {
   });
 }
 
-async function cambiarNombre() {
-  const v = await pedirTexto({
-    title: 'Cambiar mi nombre',
-    label: 'Así te ven los demás en las tarjetas',
-    value: state.me.full_name || '',
-  });
-  if (!v) return;
+async function aplicarNombre(v) {
   try {
     const p = await api.setNombre(v);
     state.me = { ...state.me, ...p };
@@ -349,10 +379,39 @@ async function cambiarNombre() {
     if (m) { m.full_name = state.me.full_name; m.initials = state.me.initials; }
     pintarTopbar();
     bus.emit('board');
-    toast('Nombre actualizado', 'ok');
+    toast(`Ahora sos ${state.me.full_name}`, 'ok');
   } catch (e) {
     toast(e.message || 'No se pudo cambiar el nombre', 'err');
   }
+}
+
+async function cambiarNombre() {
+  if (!EQUIPO.length) {
+    const v = await pedirTexto({
+      title: 'Cambiar mi nombre',
+      label: 'Así te ven los demás en las tarjetas',
+      value: state.me.full_name || '',
+    });
+    if (v) await aplicarNombre(v);
+    return;
+  }
+
+  modal({
+    size: 'sm',
+    render(host, close) {
+      host.innerHTML = html`
+        <div class="modal-pad">
+          <h2>¿Quién sos?</h2>
+          <p class="small muted" style="margin:0 0 14px">
+            Cambia cómo te ven en las tarjetas y en los comentarios.
+            Lo que ya hiciste queda a nombre del anterior.
+          </p>
+          <div id="eq-picker"></div>
+        </div>`;
+      host.querySelector('#eq-picker').appendChild(
+        grillaEquipo(async (n) => { close(); await aplicarNombre(n); }, state.me.full_name));
+    },
+  });
 }
 
 /* ================================ router =============================== */
