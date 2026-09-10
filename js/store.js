@@ -172,9 +172,27 @@ export function progresoCheck(cardId) {
  * Los que sí están asignados a algo se siguen viendo igual, porque eso sale
  * de state.members, no de acá.
  */
-export const perfilesUtiles = () =>
-  state.profiles.filter((p) =>
-    p.id === state.me?.id || !/^Invitado /i.test(p.full_name || ''));
+export function perfilesUtiles() {
+  const sirve = (p) =>
+    p.id === state.me?.id || !/^Invitado /i.test(p.full_name || '');
+
+  // Deduplica por nombre: la misma persona entrando del celular y de la
+  // compu genera dos sesiones anónimas, y las dos aparecerían en la lista.
+  // Se prefiere el perfil propio, y si no, el más reciente.
+  const porNombre = new Map();
+  for (const p of state.profiles.filter(sirve)) {
+    const k = (p.full_name || p.id).trim().toLowerCase();
+    const previo = porNombre.get(k);
+    if (!previo
+        || p.id === state.me?.id
+        || (previo.id !== state.me?.id
+            && (p.created_at || '') > (previo.created_at || ''))) {
+      porNombre.set(k, p);
+    }
+  }
+  return [...porNombre.values()]
+    .sort((a, b) => (a.full_name || '').localeCompare(b.full_name || '', 'es'));
+}
 
 export const perfil = (id) =>
   state.profiles.find((p) => p.id === id) ||
